@@ -1,0 +1,5 @@
+venv/
+orders.db
+ngrok.exe
+__pycache__/
+*.pyc
