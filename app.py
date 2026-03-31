@@ -1,6 +1,7 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import sqlite3
+import os
 
 app = Flask(__name__)
 user_sessions = {}
