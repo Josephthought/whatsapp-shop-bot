@@ -3,6 +3,34 @@ from twilio.twiml.messaging_response import MessagingResponse
 import sqlite3
 import os
 
+def init_db():
+    conn = sqlite3.connect("orders.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product TEXT,
+            phone TEXT,
+            location TEXT,
+            status TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            price REAL,
+            image TEXT,
+            available INTEGER DEFAULT 1
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+
+
 app = Flask(__name__)
 user_sessions = {}
 user_cart = {}
