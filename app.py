@@ -2,6 +2,17 @@ from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import sqlite3
 import os
+from dotenv import load_dotenv
+import requests
+import base64
+from datetime import datetime
+
+load_dotenv()
+
+CONSUMER_KEY = os.getenv("CONSUMER_KEY")
+CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
+SHORTCODE = os.getenv("SHORTCODE")
+PASSKEY = os.getenv("PASSKEY")
 
 def init_db():
     conn = sqlite3.connect("orders.db")
@@ -71,6 +82,36 @@ def save_order(product, phone, location):
     except Exception as e:
         print("DATABASE ERROR", e)
         return 0
+    
+def get_mpesa_token():
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    response = requests.get(url, auth=(CONSUMER_KEY, CONSUMER_SECRET))
+    return response.json()["access_token"]
+
+def stk_push(phone, amount, order_id):
+    token = get_mpesa_token()
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    password = base64.b64encode(
+        f"{SHORTCODE}{PASSKEY}{timestamp}".encode()
+    ).decode()
+
+    url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "BusinessShortCode": SHORTCODE,
+        "Password": password,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount,
+        "PartyA": phone,
+        "PartyB": SHORTCODE,
+        "PhoneNumber": phone,
+        "CallBackURL": "https://whatsapp-shop-bot-production.up.railway.app/mpesa/callback",
+        "AccountReference": f"Order{order_id}",
+        "TransactionDesc": "Payment for order"
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    return response.json()
 
 
 @app.route("/whatsapp", methods=["POST"])
@@ -173,7 +214,13 @@ def reply():
                     product_names = ", ".join([item['name'] for item in cart])
                     order_id = save_order(product_names, from_number, "not provided")
 
-                    summary +=f"\n\n✅ Order #{order_id} placed succesfully!\nWe will contact you soon."
+                    phone = from_number.replace("whatsapp:", "").replace("+", "")
+
+                    stk_push(phone, total, order_id)
+
+                
+
+                    summary +=f"\n\n✅ Order #{order_id} placed succesfully!\n 📱 Check your phone for M-pesa payment prompt."
 
                     msg.body(summary)
 
@@ -322,6 +369,28 @@ def admin_delete(product_id):
     conn.close()
 
     return "<p>Deleted! <a href='/admin'>Go back</a></p>"
+
+@app.route("/mpesa/callback", methods=["POST"])
+def mpesa_callback():
+    data = request.get_json()
+    
+    try:
+        result_code = data["Body"]["stkCallback"]["ResultCode"]
+        
+        if result_code == 0:
+            # Payment successful
+            metadata = data["Body"]["stkCallback"]["CallbackMetadata"]["Item"]
+            amount = metadata[0]["Value"]
+            receipt = metadata[1]["Value"]
+            phone = metadata[4]["Value"]
+            
+            print(f"Payment received: KES {amount} from {phone}, Receipt: {receipt}")
+        else:
+            print("Payment failed or cancelled")
+    except Exception as e:
+        print(f"Callback error: {e}")
+    
+    return "OK", 200
 
 
 if __name__ == "__main__":
