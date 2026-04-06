@@ -216,12 +216,12 @@ def reply():
 
                     phone = from_number.replace("whatsapp:", "").replace("+", "")
 
-                    stk_push(phone, total, order_id)
-
-                
-
-                    summary +=f"\n\n✅ Order #{order_id} placed succesfully!\n 📱 Check your phone for M-pesa payment prompt."
-
+                    try:
+                        stk_push(phone, total, order_id)
+                        summary +=f"\n\n✅ Order #{order_id} placed succesfully!\n 📱 Check your phone for M-pesa payment prompt."
+                    except Exception as e:
+                        print(f"STK push error: {e}")
+                        summary += f"\n\n✅ Order #{order_id} placed! \n we will contact you for payment details."
                     msg.body(summary)
 
                     #clear cart and session
