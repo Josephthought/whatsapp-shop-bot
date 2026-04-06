@@ -229,7 +229,7 @@ def reply():
                     user_sessions.pop(from_number, None)
 
             else:
-                msg.body("Please reply with a valid number: 1, 2 or 3.")
+                msg.body("Please reply with a valid number between 1 and {len (products_list)}.")
 
             return str(response)
 
