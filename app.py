@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import requests
 import base64
 from datetime import datetime
+from flask import Flask, request, render_template
 
 load_dotenv()
 
@@ -237,12 +238,12 @@ def reply():
             
 
     elif "menu" in incoming_msg:
-        products = get_products()
-        menu = "Our products:\n\n"
-        for i, (key, value) in enumerate(products.items(), start=1):
-            menu += f"{i}. {value['name']} - ${value['price']}\n"
-        menu += "\nType 'order' to place an order."
-        msg.body(menu)
+        msg.body(
+            "🌍 Welcome to AfriStore!\n\n"
+            "Browse our full catalogue here:\n"
+            "https://whatsapp-shop-bot-production.up.railway.app/shop\n\n"
+            "Or type 'order' to order directly here on WhatsApp."
+        )
         return str(response)
     
     elif "hello" in incoming_msg:
@@ -391,6 +392,25 @@ def mpesa_callback():
         print(f"Callback error: {e}")
     
     return "OK", 200
+
+@app.route("/shop")
+def shop():
+    conn = sqlite3.connect("orders.db")
+    c = conn.cursor()
+    c.execute("SELECT id, name, price, image FROM products WHERE available = 1")
+    rows = c.fetchall()
+    conn.close()
+
+    products = []
+    for row in rows:
+        products.append({
+            "id": row[0],
+            "name": row[1],
+            "price": row[2],
+            "image": row[3]
+        })
+
+    return render_template("shop.html", products=products)
 
 
 if __name__ == "__main__":
