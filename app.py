@@ -241,7 +241,7 @@ def reply():
         msg.body(
             "🌍 Welcome to AfriStore!\n\n"
             "Browse our full catalogue here:\n"
-            "https://whatsapp-shop-bot-production.up.railway.app/shop\n\n"
+            "https://submental-dotty-chimerical.ngrok-free.dev/shop\n\n"
             "Or type 'order' to order directly here on WhatsApp."
         )
         return str(response)
