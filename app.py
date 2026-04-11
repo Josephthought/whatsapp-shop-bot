@@ -149,24 +149,52 @@ def reply():
     
     elif incoming_msg.startswith("i want to order:"):
         product_info = incoming_msg.replace("i want to order:", "").strip()
+        product_info = product_info.split(".")[0].strip()
 
-        #add to cart directly
+        items = product_info.split(",")
+
         if from_number not in user_cart:
             user_cart[from_number] = []
 
-        parts = product_info.split("-")
-        product_name = parts[0].srip()
-        price = float(parts[1].replace("$", "").strip()) if len(parts) > 1 else 0
+        for item in items:
+            parts = item.strip().split("-")
+            if len(parts) >= 2:
+                product_name = parts[0].strip()
+                price_str = parts[1].replace("$", "").strip()
+                try:
+                    price = float(price_str)
+                    user_cart[from_number].append({"name": product_name, "price": price})
+                except:
+                    pass
 
-        user_cart[from_number].append({"name": product_name, "price": price})
-        user_sessions[from_number] = "waiting_product"
+        summary = "✅order received from Afristore!\n\n"
+        total = 0
+        for item in user_cart[from_number]:
+            summary += f"- {item['name']}: ${item['price']}\n"
+            total += item['price']
 
-        msg.body(
-            f"✅{product_name} added to your cart!\n\n"
-            f"Type 'more' to add onother item\n"
-            f"or 'checkout' to place your order."
-        )
+        summary += f"\nTotal: ${total}\n\n"
+
+        product_names = ",".join([item['name']for item in user_cart[from_number]])
+        order_id = save_order(product_name, from_number, "not provided")
+
+        phone = from_number.replace("whatsapp:", "").replace("+", "")
+
+        try:
+            stk_push(phone, total, order_id)
+            summary += f"✅ Order #{order_id} placed!\n📱chek your M-pesa for payment prompt."
+        except:
+            print(f"STK push error: {e}")
+            summary += f"✅order #{order_id} placed !\nwe will contac ou for payment details."
+
+        msg.body(summary)
+
+        user_cart.pop(from_number, None)
+        user_sessions.pop(from_number, None)
+
         return str(response)
+    
+
     
     elif "order" in incoming_msg:
         user_sessions[from_number] = "waiting_product"
