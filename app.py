@@ -147,6 +147,27 @@ def reply():
         return str(response)
 
     
+    elif incoming_msg.startswith("i want to order:"):
+        product_info = incoming_msg.replace("i want to order:", "").strip()
+
+        #add to cart directly
+        if from_number not in user_cart:
+            user_cart[from_number] = []
+
+        parts = product_info.split("-")
+        product_name = parts[0].srip()
+        price = float(parts[1].replace("$", "").strip()) if len(parts) > 1 else 0
+
+        user_cart[from_number].append({"name": product_name, "price": price})
+        user_sessions[from_number] = "waiting_product"
+
+        msg.body(
+            f"✅{product_name} added to your cart!\n\n"
+            f"Type 'more' to add onother item\n"
+            f"or 'checkout' to place your order."
+        )
+        return str(response)
+    
     elif "order" in incoming_msg:
         user_sessions[from_number] = "waiting_product"
         products = get_products()
@@ -230,7 +251,7 @@ def reply():
                     user_sessions.pop(from_number, None)
 
             else:
-                msg.body("Please reply with a valid number between 1 and {len (products_list)}.")
+                msg.body(f"Please reply with a valid number between 1 and {len (products_list)}.")
 
             return str(response)
 
